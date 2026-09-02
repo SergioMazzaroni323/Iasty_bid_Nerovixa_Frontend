@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import AppLogo from './AppLogo.vue'
-import ThemeToggle from './ThemeToggle.vue'
 
 defineProps<{
   title: string
@@ -10,10 +9,6 @@ defineProps<{
 
 <template>
   <div class="w-full max-w-[420px]">
-    <div class="mb-5 flex justify-end">
-      <ThemeToggle />
-    </div>
-
     <div class="app-card !p-6 sm:!p-8">
       <div class="mb-6 flex flex-col items-center text-center">
         <AppLogo size="lg" />

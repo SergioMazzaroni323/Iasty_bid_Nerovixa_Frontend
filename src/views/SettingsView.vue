@@ -11,11 +11,11 @@ import ThemeToggle from '../components/ThemeToggle.vue'
         <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
           Choose light or dark theme for the platform.
         </p>
-        <div class="mt-5 flex items-center gap-4">
+        <div class="mt-5">
           <ThemeToggle />
         </div>
         <p class="mt-4 text-xs leading-relaxed text-slate-500 dark:text-slate-500">
-          Light theme uses the black logo. Dark theme uses the white logo. Your preference is saved locally.
+          Your preference is saved on this device.
         </p>
       </section>
 

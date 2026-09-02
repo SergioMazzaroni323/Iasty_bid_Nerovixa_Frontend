@@ -26,5 +26,5 @@ const sizeClass = computed(() => {
 </script>
 
 <template>
-  <img :src="logoSrc" alt="Iasty Bid" class="w-auto object-contain" :class="sizeClass" />
+  <img :src="logoSrc" alt="Nerovixa" class="w-auto object-contain" :class="sizeClass" />
 </template>

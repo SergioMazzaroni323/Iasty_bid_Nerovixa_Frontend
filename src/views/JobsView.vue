@@ -36,11 +36,9 @@ const location = ref('')
 const sortBy = ref<JobSortField>('created_at')
 const sortOrder = ref<SortOrder>('desc')
 const page = ref(1)
-const pageSize = ref(20)
+const PAGE_SIZE = 10
 
-const submittedProposals = ref(0)
-
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
 const activeFilterCount = computed(() => {
   let count = 0
   if (search.value) count++
@@ -84,9 +82,9 @@ async function loadJobs() {
       sort_by: sortBy.value,
       sort_order: sortOrder.value,
       page: page.value,
-      page_size: pageSize.value,
+      page_size: PAGE_SIZE,
     })
-    jobs.value = data.items
+    jobs.value = data.items.slice(0, PAGE_SIZE)
     total.value = data.total
   } catch {
     error.value = 'Failed to load jobs. Please try again.'
@@ -98,7 +96,7 @@ async function loadJobs() {
 function prependJob(job: Job) {
   if (page.value === 1 && sortBy.value === 'created_at' && sortOrder.value === 'desc') {
     jobs.value.unshift(job)
-    if (jobs.value.length > pageSize.value) {
+    if (jobs.value.length > PAGE_SIZE) {
       jobs.value.pop()
     }
     total.value += 1
@@ -220,7 +218,7 @@ function formatLabel(value: string) {
     .join('-')
 }
 
-watch([company, industry, workMode, employmentType, location, sortBy, sortOrder, pageSize], () => {
+watch([company, industry, workMode, employmentType, location, sortBy, sortOrder], () => {
   page.value = 1
   loadJobs()
 })
@@ -240,9 +238,6 @@ watch(search, () => {
 })
 
 onMounted(async () => {
-  if (window.innerWidth >= 768) {
-    filtersOpen.value = true
-  }
   await loadScrapeStatus()
   if (scrapeStatus.value?.is_active) {
     scraping.value = true
@@ -265,146 +260,158 @@ onUnmounted(() => {
 
 <template>
   <AppLayout>
-    <div class="space-y-4 sm:space-y-6">
-      <div class="grid gap-4 sm:grid-cols-3">
-        <div class="app-stat">
-          <p class="app-stat-label">Total jobs</p>
-          <p class="app-stat-value">{{ total }}</p>
-        </div>
-        <div class="app-stat">
-          <p class="app-stat-label">On this page</p>
-          <p class="app-stat-value">{{ jobs.length }}</p>
-        </div>
-        <div class="app-stat">
-          <p class="app-stat-label">Submitted proposals</p>
-          <p class="app-stat-value">{{ submittedProposals }}</p>
-        </div>
+    <template #header-actions>
+      <div class="flex items-center gap-2 sm:gap-3">
+        <p
+          v-if="scrapeMessage"
+          class="hidden max-w-[16rem] truncate text-right text-xs text-slate-600 dark:text-slate-400 lg:block"
+          :title="scrapeMessage"
+        >
+          {{ scrapeMessage }}
+        </p>
+        <button
+          type="button"
+          class="app-btn-scrape !px-3 !py-2 text-xs sm:!px-4 sm:!py-2.5 sm:text-sm"
+          :disabled="scraping || scrapeStatus?.available_templates === 0"
+          @click="startScraping"
+        >
+          <span v-if="scraping" class="app-spinner" />
+          <span class="sm:hidden">{{ scraping ? 'Scraping…' : 'Scrape' }}</span>
+          <span class="hidden sm:inline">{{ scraping ? 'Scraping…' : 'Scrape more jobs' }}</span>
+        </button>
+        <button
+          v-if="scraping"
+          type="button"
+          class="app-btn-stop !px-3 !py-2 text-xs sm:!px-4 sm:!py-2.5 sm:text-sm"
+          @click="stopScraping"
+        >
+          Stop
+        </button>
       </div>
+    </template>
 
-      <section class="app-card">
-        <div class="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            class="app-btn-scrape"
-            :disabled="scraping || scrapeStatus?.available_templates === 0"
-            @click="startScraping"
-          >
-            <span v-if="scraping" class="app-spinner" />
-            {{ scraping ? 'Scraping…' : 'Scrape more jobs' }}
-          </button>
-
-          <button v-if="scraping" type="button" class="app-btn-stop" @click="stopScraping">
-            Stop
-          </button>
-
-          <p v-if="scrapeMessage" class="text-sm text-slate-600 dark:text-slate-400">{{ scrapeMessage }}</p>
-        </div>
-      </section>
-
-      <section class="app-card">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="flex items-center gap-2">
-            <h3 class="app-card-title">Filters</h3>
-            <span
-              v-if="activeFilterCount > 0"
-              class="app-filter-chip"
-            >
-              {{ activeFilterCount }}
-            </span>
-          </div>
-
-          <div class="flex gap-2">
-            <button
-              type="button"
-              class="app-btn-secondary md:hidden"
-              @click="filtersOpen = !filtersOpen"
-            >
-              {{ filtersOpen ? 'Hide' : 'Show' }} filters
-            </button>
-            <button type="button" class="app-btn-secondary" @click="resetFilters">Reset</button>
-          </div>
-        </div>
-
-        <div v-show="filtersOpen" class="mt-4 space-y-4">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <label class="app-field">
-              <span>Search</span>
-              <input v-model="search" class="app-input w-full" type="text" placeholder="Title, company, role..." />
-            </label>
-
-            <label class="app-field">
-              <span>Company</span>
-              <select v-model="company" class="app-input w-full">
-                <option value="">All companies</option>
-                <option v-for="name in companies" :key="name" :value="name">{{ name }}</option>
-              </select>
-            </label>
-
-            <label class="app-field">
-              <span>Industry</span>
-              <select v-model="industry" class="app-input w-full">
-                <option value="">All industries</option>
-                <option v-for="name in industries" :key="name" :value="name">{{ name }}</option>
-              </select>
-            </label>
-
-            <label class="app-field">
-              <span>Work mode</span>
-              <select v-model="workMode" class="app-input w-full">
-                <option value="">All modes</option>
-                <option v-for="mode in WORK_MODES" :key="mode.value" :value="mode.value">{{ mode.label }}</option>
-              </select>
-            </label>
-
-            <label class="app-field">
-              <span>Employment type</span>
-              <select v-model="employmentType" class="app-input w-full">
-                <option value="">All types</option>
-                <option v-for="type in EMPLOYMENT_TYPES" :key="type.value" :value="type.value">{{ type.label }}</option>
-              </select>
-            </label>
-
-            <label class="app-field">
-              <span>Location</span>
-              <input v-model="location" class="app-input w-full" type="text" placeholder="City, state, remote..." />
-            </label>
-          </div>
-
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label class="app-field">
-              <span>Sort by</span>
-              <select v-model="sortBy" class="app-input w-full">
-                <option v-for="col in SORT_COLUMNS" :key="col.value" :value="col.value">{{ col.label }}</option>
-              </select>
-            </label>
-
-            <label class="app-field">
-              <span>Order</span>
-              <select v-model="sortOrder" class="app-input w-full">
-                <option value="asc">Ascending</option>
-                <option value="desc">Descending</option>
-              </select>
-            </label>
-
-            <label class="app-field">
-              <span>Per page</span>
-              <select v-model.number="pageSize" class="app-input w-full">
-                <option :value="10">10</option>
-                <option :value="20">20</option>
-                <option :value="50">50</option>
-              </select>
-            </label>
-          </div>
-        </div>
-      </section>
-
-      <section class="app-card overflow-hidden !p-0">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-6 sm:py-4">
+    <section class="app-card overflow-hidden !p-0">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-6 sm:py-4">
           <div>
             <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100 sm:text-lg">Job listings</h3>
             <p class="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">{{ total }} job{{ total === 1 ? '' : 's' }} found</p>
           </div>
-          <span v-if="loading" class="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Loading...</span>
+          <div class="flex flex-wrap items-center gap-2">
+            <span v-if="loading" class="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Loading...</span>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition"
+              :class="
+                filtersOpen
+                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-950/50 dark:text-indigo-300'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+              "
+              :aria-expanded="filtersOpen"
+              aria-controls="jobs-filters-panel"
+              @click="filtersOpen = !filtersOpen"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18M6 12h12M10 20h4" />
+              </svg>
+              Filters
+              <span
+                v-if="activeFilterCount > 0"
+                class="app-filter-chip"
+              >
+                {{ activeFilterCount }}
+              </span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4 text-slate-400 transition-transform duration-200"
+                :class="filtersOpen ? 'rotate-180' : ''"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <button
+              v-if="activeFilterCount > 0 || filtersOpen"
+              type="button"
+              class="app-btn-secondary"
+              @click="resetFilters"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="jobs-filters-panel"
+          class="grid transition-[grid-template-rows] duration-200 ease-out"
+          :class="filtersOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
+        >
+          <div class="overflow-hidden">
+            <div class="space-y-4 border-b border-slate-200 px-4 py-4 dark:border-slate-800 sm:px-6">
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <label class="app-field">
+                  <span>Search</span>
+                  <input v-model="search" class="app-input w-full" type="text" placeholder="Title, company, role..." />
+                </label>
+
+                <label class="app-field">
+                  <span>Company</span>
+                  <select v-model="company" class="app-input w-full">
+                    <option value="">All companies</option>
+                    <option v-for="name in companies" :key="name" :value="name">{{ name }}</option>
+                  </select>
+                </label>
+
+                <label class="app-field">
+                  <span>Industry</span>
+                  <select v-model="industry" class="app-input w-full">
+                    <option value="">All industries</option>
+                    <option v-for="name in industries" :key="name" :value="name">{{ name }}</option>
+                  </select>
+                </label>
+
+                <label class="app-field">
+                  <span>Work mode</span>
+                  <select v-model="workMode" class="app-input w-full">
+                    <option value="">All modes</option>
+                    <option v-for="mode in WORK_MODES" :key="mode.value" :value="mode.value">{{ mode.label }}</option>
+                  </select>
+                </label>
+
+                <label class="app-field">
+                  <span>Employment type</span>
+                  <select v-model="employmentType" class="app-input w-full">
+                    <option value="">All types</option>
+                    <option v-for="type in EMPLOYMENT_TYPES" :key="type.value" :value="type.value">{{ type.label }}</option>
+                  </select>
+                </label>
+
+                <label class="app-field">
+                  <span>Location</span>
+                  <input v-model="location" class="app-input w-full" type="text" placeholder="City, state, remote..." />
+                </label>
+              </div>
+
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label class="app-field">
+                  <span>Sort by</span>
+                  <select v-model="sortBy" class="app-input w-full">
+                    <option v-for="col in SORT_COLUMNS" :key="col.value" :value="col.value">{{ col.label }}</option>
+                  </select>
+                </label>
+
+                <label class="app-field">
+                  <span>Order</span>
+                  <select v-model="sortOrder" class="app-input w-full">
+                    <option value="asc">Ascending</option>
+                    <option value="desc">Descending</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
 
         <p v-if="error" class="auth-error px-4 py-3 sm:px-6">{{ error }}</p>
@@ -525,6 +532,5 @@ onUnmounted(() => {
           </button>
         </div>
       </section>
-    </div>
   </AppLayout>
 </template>

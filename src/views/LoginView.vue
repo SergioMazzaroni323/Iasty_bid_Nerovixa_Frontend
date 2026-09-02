@@ -36,7 +36,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <AuthLayout title="Welcome back" subtitle="Sign in to your Iasty Bid account">
+  <AuthLayout title="Welcome back" subtitle="Sign in to your Nerovixa account">
     <form class="flex flex-col gap-4" @submit.prevent="onSubmit">
       <label class="auth-label">
         Email

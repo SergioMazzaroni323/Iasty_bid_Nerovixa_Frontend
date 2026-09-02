@@ -3,7 +3,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authApi, type UserResponse } from '../api/client'
 import AppLogo from './AppLogo.vue'
-import ThemeToggle from './ThemeToggle.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -33,7 +32,7 @@ const navItems = [
 
 const pageTitle = computed(() => {
   const item = navItems.find((entry) => entry.name === route.name)
-  return item?.label ?? 'Iasty Bid'
+  return item?.label ?? 'Nerovixa'
 })
 
 onMounted(async () => {
@@ -185,7 +184,9 @@ function navClass(active: boolean) {
             </p>
           </div>
 
-          <ThemeToggle />
+          <div v-if="$slots['header-actions']" class="shrink-0">
+            <slot name="header-actions" />
+          </div>
         </div>
       </header>
 
