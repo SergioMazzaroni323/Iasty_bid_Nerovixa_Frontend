@@ -291,7 +291,7 @@ onUnmounted(() => {
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-6 sm:py-4">
           <div>
             <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100 sm:text-lg">Job listings</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">{{ total }} job{{ total === 1 ? '' : 's' }} found</p>
+            <p v-if="!loading" class="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">{{ total }} job{{ total === 1 ? '' : 's' }} found</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <button
