@@ -12,8 +12,6 @@ const error = ref('')
 const actionMessage = ref('')
 const busyId = ref<number | null>(null)
 
-const statusOptions: UserStatus[] = ['pending', 'active', 'deactive']
-
 async function ensureAdmin() {
   const { data } = await authApi.me()
   if (data.role !== 'admin' && data.email.toLowerCase() !== 'hoyosnohor@gmail.com') {
@@ -38,7 +36,7 @@ async function loadUsers() {
 
 async function setStatus(user: AdminUser, status: UserStatus) {
   if (user.status === status) return
-  if (user.role === 'admin' || user.email.toLowerCase() === 'hoyosnohor@gmail.com') {
+  if (isPrimaryAdmin(user)) {
     error.value = 'Cannot change the primary admin account status.'
     return
   }
@@ -55,6 +53,21 @@ async function setStatus(user: AdminUser, status: UserStatus) {
   } finally {
     busyId.value = null
   }
+}
+
+function nextStatus(status: UserStatus): UserStatus {
+  if (status === 'pending') return 'active'
+  if (status === 'active') return 'deactive'
+  return 'active'
+}
+
+async function cycleStatus(user: AdminUser) {
+  if (busyId.value === user.id) return
+  if (isPrimaryAdmin(user)) {
+    error.value = 'Cannot change the primary admin account status.'
+    return
+  }
+  await setStatus(user, nextStatus(user.status))
 }
 
 async function resetPassword(user: AdminUser) {
@@ -185,44 +198,16 @@ onMounted(async () => {
                   </span>
                 </td>
                 <td>
-                  <div class="flex min-w-[220px] flex-col gap-2">
-                    <span
-                      class="inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold uppercase ring-1"
-                      :class="statusClass(user.status)"
-                    >
-                      {{ user.status }}
-                    </span>
-
-                    <div class="flex flex-wrap items-center gap-2">
-                      <select
-                        class="app-input !py-1.5 text-xs"
-                        :value="user.status"
-                        :disabled="busyId === user.id || isPrimaryAdmin(user)"
-                        @change="setStatus(user, ($event.target as HTMLSelectElement).value as UserStatus)"
-                      >
-                        <option v-for="option in statusOptions" :key="option" :value="option">
-                          {{ option }}
-                        </option>
-                      </select>
-
-                      <button
-                        type="button"
-                        class="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
-                        :disabled="busyId === user.id || isPrimaryAdmin(user) || user.status === 'active'"
-                        @click="setStatus(user, 'active')"
-                      >
-                        Activate
-                      </button>
-                      <button
-                        type="button"
-                        class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                        :disabled="busyId === user.id || isPrimaryAdmin(user) || user.status === 'deactive'"
-                        @click="setStatus(user, 'deactive')"
-                      >
-                        Deactivate
-                      </button>
-                    </div>
-                  </div>
+                  <button
+                    type="button"
+                    class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold uppercase ring-1 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    :class="statusClass(user.status)"
+                    :disabled="busyId === user.id || isPrimaryAdmin(user)"
+                    :title="isPrimaryAdmin(user) ? 'Admin status is locked' : `Click to set ${nextStatus(user.status)}`"
+                    @click="cycleStatus(user)"
+                  >
+                    {{ user.status }}
+                  </button>
                 </td>
                 <td>
                   <button
