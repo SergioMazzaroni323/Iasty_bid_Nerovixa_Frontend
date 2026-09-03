@@ -2,10 +2,18 @@ import type { DashboardStats, DailyCount, WorkModeStat } from '../api/dashboard'
 import { jobsApi, type WorkMode } from '../api/jobs'
 
 const WORK_MODES: WorkMode[] = ['remote', 'hybrid', 'on-site']
-const DASHBOARD_DAYS = 14
+export const DASHBOARD_DAYS = 7
 
 function dateKey(d: Date) {
   return d.toISOString().slice(0, 10)
+}
+
+function mixSeed(...parts: number[]) {
+  let seed = 2166136261
+  for (const part of parts) {
+    seed ^= part + 0x9e3779b9 + (seed << 6) + (seed >> 2)
+  }
+  return seed >>> 0
 }
 
 function seededRandom(seed: number) {
@@ -22,19 +30,27 @@ function generateDemoDailySeries(userSeed: number, days: number): { applications
   const today = new Date()
   today.setHours(12, 0, 0, 0)
 
+  const appliedPool = [31, 32, 33, 34, 35, 36, 37, 38, 39]
+
   for (let offset = 0; offset < days; offset += 1) {
     const day = new Date(today)
     day.setDate(today.getDate() - (days - 1 - offset))
     const dayOrdinal = Math.floor(day.getTime() / 86_400_000)
-    const rng = seededRandom(userSeed * 10_000 + dayOrdinal)
 
-    const applied = 60 + Math.floor(rng() * 21)
-    const resumeRatio = 0.85 + rng() * 0.12
-    const resume = Math.max(1, Math.min(applied - 1, Math.round(applied * resumeRatio)))
+    const appRng = seededRandom(mixSeed(userSeed, dayOrdinal, 101))
+    const resRng = seededRandom(mixSeed(userSeed, dayOrdinal, 202))
 
-    const date = dateKey(day)
-    applications.push({ date, count: applied })
-    resumes.push({ date, count: resume })
+    const applied = appliedPool[Math.floor(appRng() * appliedPool.length)]
+
+    const gap = 2 + Math.floor(resRng() * 7)
+    let resume = applied - gap
+    if (resRng() > 0.55) {
+      resume += Math.floor(resRng() * 3) - 1
+    }
+    resume = Math.max(1, Math.min(applied - 1, resume))
+
+    applications.push({ date: dateKey(day), count: applied })
+    resumes.push({ date: dateKey(day), count: resume })
   }
 
   return { applications, resumes }
@@ -68,3 +84,5 @@ export async function buildDashboardStats(userSeed: number): Promise<DashboardSt
     days: DASHBOARD_DAYS,
   }
 }
+
+export { generateDemoDailySeries }

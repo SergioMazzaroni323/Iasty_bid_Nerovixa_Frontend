@@ -2,10 +2,11 @@
 import { onMounted, ref } from 'vue'
 import { fetchCurrentUser, getCachedUser } from '../auth/session'
 import type { UserResponse } from '../api/client'
-import { dashboardApi, type DashboardStats } from '../api/dashboard'
+import type { DashboardStats } from '../api/dashboard'
 import { buildDashboardStats } from '../utils/dashboardStats'
+
 import WorkModeDonut from '../components/dashboard/WorkModeDonut.vue'
-import DailyBarChart from '../components/dashboard/DailyBarChart.vue'
+import DailyLineChart from '../components/dashboard/DailyLineChart.vue'
 
 const user = ref<UserResponse | null>(getCachedUser())
 const stats = ref<DashboardStats | null>(null)
@@ -13,12 +14,7 @@ const loading = ref(true)
 const error = ref('')
 
 async function loadStats(currentUser: UserResponse) {
-  try {
-    const { data } = await dashboardApi.stats()
-    stats.value = data
-  } catch {
-    stats.value = await buildDashboardStats(currentUser.id)
-  }
+  stats.value = await buildDashboardStats(currentUser.id)
 }
 
 onMounted(async () => {
@@ -73,30 +69,34 @@ onMounted(async () => {
 
       <section class="app-card lg:col-span-1">
         <h3 class="app-card-title">Applied jobs</h3>
-        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Last {{ stats?.days ?? 14 }} days</p>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Last {{ stats?.days ?? 7 }} days</p>
         <div class="mt-6">
           <div v-if="loading" class="flex h-48 items-center justify-center">
             <span class="inline-block h-8 w-8 animate-spin rounded-full border-[3px] border-indigo-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-400" />
           </div>
-          <DailyBarChart
+          <DailyLineChart
             v-else-if="stats"
             :items="stats.applications_by_day"
             color="#6366f1"
+            :min-y="25"
+            :max-y="45"
           />
         </div>
       </section>
 
       <section class="app-card lg:col-span-1">
         <h3 class="app-card-title">Tailored resumes</h3>
-        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Last {{ stats?.days ?? 14 }} days</p>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Last {{ stats?.days ?? 7 }} days</p>
         <div class="mt-6">
           <div v-if="loading" class="flex h-48 items-center justify-center">
             <span class="inline-block h-8 w-8 animate-spin rounded-full border-[3px] border-indigo-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-400" />
           </div>
-          <DailyBarChart
+          <DailyLineChart
             v-else-if="stats"
             :items="stats.resumes_by_day"
             color="#8b5cf6"
+            :min-y="20"
+            :max-y="40"
           />
         </div>
       </section>
