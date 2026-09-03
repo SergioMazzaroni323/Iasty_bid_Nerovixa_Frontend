@@ -81,7 +81,8 @@
     @apply w-full table-fixed;
   }
 
-  .app-table-jobs td {
+  .app-table-jobs td,
+  .app-table-jobs th {
     @apply overflow-hidden;
   }
 
