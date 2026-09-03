@@ -13,6 +13,8 @@ const isAdmin = computed(
     user.value?.email?.toLowerCase() === 'hoyosnohor@gmail.com',
 )
 
+const roleLabel = computed(() => (isAdmin.value ? 'Admin' : 'User'))
+
 onMounted(async () => {
   try {
     user.value = await fetchCurrentUser()
@@ -57,8 +59,8 @@ onMounted(async () => {
             <dd class="font-medium text-slate-800 dark:text-slate-200">Remote / Hybrid</dd>
           </div>
           <div class="flex justify-between gap-4 rounded-xl bg-slate-50 px-3.5 py-3 dark:bg-slate-950">
-            <dt class="text-slate-500 dark:text-slate-400">Extension sync</dt>
-            <dd class="font-medium text-amber-600 dark:text-amber-400">Coming soon</dd>
+            <dt class="text-slate-500 dark:text-slate-400">Role</dt>
+            <dd class="font-medium text-slate-800 dark:text-slate-200">{{ roleLabel }}</dd>
           </div>
         </dl>
       </section>

@@ -372,19 +372,19 @@ onUnmounted(() => {
 
         <!-- Desktop table -->
         <div class="hidden overflow-x-auto bg-white dark:bg-slate-900 md:block">
-          <table class="app-table">
+          <table class="app-table app-table-jobs">
             <thead>
               <tr>
-                <th><button type="button" class="app-sort-btn" @click="toggleSort('job_title')">Job title {{ sortIcon('job_title') }}</button></th>
-                <th><button type="button" class="app-sort-btn" @click="toggleSort('company_name')">Company {{ sortIcon('company_name') }}</button></th>
-                <th>Job link</th>
-                <th>Description</th>
-                <th>Required role</th>
-                <th><button type="button" class="app-sort-btn" @click="toggleSort('required_locations')">Locations {{ sortIcon('required_locations') }}</button></th>
-                <th><button type="button" class="app-sort-btn" @click="toggleSort('work_mode')">Work mode {{ sortIcon('work_mode') }}</button></th>
-                <th><button type="button" class="app-sort-btn" @click="toggleSort('employment_type')">Type {{ sortIcon('employment_type') }}</button></th>
-                <th><button type="button" class="app-sort-btn" @click="toggleSort('salary_expected')">Salary {{ sortIcon('salary_expected') }}</button></th>
-                <th><button type="button" class="app-sort-btn" @click="toggleSort('industry')">Industry {{ sortIcon('industry') }}</button></th>
+                <th class="w-[14%]"><button type="button" class="app-sort-btn" @click="toggleSort('job_title')">Job title {{ sortIcon('job_title') }}</button></th>
+                <th class="w-[12%]"><button type="button" class="app-sort-btn" @click="toggleSort('company_name')">Company {{ sortIcon('company_name') }}</button></th>
+                <th class="w-[8%]">Job link</th>
+                <th class="w-[18%]">Description</th>
+                <th class="w-[10%]">Required role</th>
+                <th class="w-[12%]"><button type="button" class="app-sort-btn" @click="toggleSort('required_locations')">Locations {{ sortIcon('required_locations') }}</button></th>
+                <th class="w-[8%]"><button type="button" class="app-sort-btn" @click="toggleSort('work_mode')">Work mode {{ sortIcon('work_mode') }}</button></th>
+                <th class="w-[8%]"><button type="button" class="app-sort-btn" @click="toggleSort('employment_type')">Type {{ sortIcon('employment_type') }}</button></th>
+                <th class="w-[5%]"><button type="button" class="app-sort-btn" @click="toggleSort('salary_expected')">Salary {{ sortIcon('salary_expected') }}</button></th>
+                <th class="w-[5%]"><button type="button" class="app-sort-btn" @click="toggleSort('industry')">Industry {{ sortIcon('industry') }}</button></th>
               </tr>
             </thead>
             <tbody>
@@ -401,11 +401,13 @@ onUnmounted(() => {
               </tr>
               <template v-else>
                 <tr v-for="job in jobs" :key="job.id" class="bg-white transition hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800">
-                <td class="max-w-[200px] font-medium text-slate-900 dark:text-slate-100">
+                <td class="max-w-0 truncate font-medium text-slate-900 dark:text-slate-100" :title="job.job_title">
                   {{ job.job_title }}
                 </td>
-                <td>{{ job.company_name }}</td>
-                <td>
+                <td class="max-w-0 truncate" :title="job.company_name">
+                  {{ job.company_name }}
+                </td>
+                <td class="max-w-0 truncate">
                   <a
                     v-if="job.job_link"
                     :href="job.job_link"
@@ -417,13 +419,13 @@ onUnmounted(() => {
                   </a>
                   <span v-else>—</span>
                 </td>
-                <td class="max-w-[240px] whitespace-normal text-slate-600 dark:text-slate-400" :title="job.job_description ?? undefined">{{ truncate(job.job_description, 60) }}</td>
-                <td>{{ job.required_role || '—' }}</td>
-                <td class="max-w-[180px] whitespace-normal">{{ job.required_locations || '—' }}</td>
+                <td class="max-w-0 whitespace-normal break-words text-slate-600 dark:text-slate-400" :title="job.job_description ?? undefined">{{ truncate(job.job_description, 60) }}</td>
+                <td class="max-w-0 truncate" :title="job.required_role ?? undefined">{{ job.required_role || '—' }}</td>
+                <td class="max-w-0 whitespace-normal break-words" :title="job.required_locations ?? undefined">{{ job.required_locations || '—' }}</td>
                 <td><span class="app-badge">{{ formatLabel(job.work_mode) }}</span></td>
                 <td><span class="app-badge app-badge-muted">{{ formatLabel(job.employment_type) }}</span></td>
-                <td>{{ job.salary_expected || '—' }}</td>
-                <td>{{ job.industry || '—' }}</td>
+                <td class="max-w-0 truncate" :title="job.salary_expected ?? undefined">{{ job.salary_expected || '—' }}</td>
+                <td class="max-w-0 truncate" :title="job.industry ?? undefined">{{ job.industry || '—' }}</td>
                 </tr>
               </template>
             </tbody>
