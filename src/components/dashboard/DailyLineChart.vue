@@ -15,9 +15,9 @@ const props = withDefaults(
   },
 )
 
-const padding = { top: 12, right: 12, bottom: 28, left: 36 }
+const padding = { top: 16, right: 12, bottom: 32, left: 36 }
 const width = 320
-const height = 180
+const height = 220
 
 const counts = computed(() => props.items.map((item) => item.count))
 
@@ -83,7 +83,7 @@ function formatShortLabel(dateStr: string) {
   <div class="w-full">
     <svg
       :viewBox="`0 0 ${width} ${height}`"
-      class="h-48 w-full"
+      class="h-56 w-full"
       role="img"
       aria-label="Daily activity line chart"
     >

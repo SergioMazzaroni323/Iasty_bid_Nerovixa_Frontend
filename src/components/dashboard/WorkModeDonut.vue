@@ -53,7 +53,7 @@ function setHovered(workMode: string | null) {
 
 <template>
   <div class="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-center">
-    <div class="relative h-44 w-44 shrink-0">
+    <div class="relative h-56 w-56 shrink-0">
       <Transition name="fade">
         <div
           v-if="activeSegment"
