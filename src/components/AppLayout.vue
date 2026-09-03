@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { authApi, type UserResponse } from '../api/client'
+import { clearSession, fetchCurrentUser } from '../auth/session'
+import type { UserResponse } from '../api/client'
 import AppLogo from './AppLogo.vue'
 
 const route = useRoute()
@@ -54,10 +55,9 @@ const pageTitle = computed(() => {
 
 onMounted(async () => {
   try {
-    const { data } = await authApi.me()
-    user.value = data
+    user.value = await fetchCurrentUser()
   } catch {
-    localStorage.removeItem('access_token')
+    clearSession()
     await router.push({ name: 'login' })
   }
 })
@@ -70,7 +70,7 @@ watch(
 )
 
 function logout() {
-  localStorage.removeItem('access_token')
+  clearSession()
   router.push({ name: 'login' })
 }
 
@@ -201,14 +201,11 @@ function navClass(active: boolean) {
             </p>
           </div>
 
-          <div v-if="$slots['header-actions']" class="shrink-0">
-            <slot name="header-actions" />
-          </div>
         </div>
       </header>
 
       <main class="flex-1 p-3 sm:p-5 lg:p-8">
-        <slot />
+        <RouterView />
       </main>
     </div>
 

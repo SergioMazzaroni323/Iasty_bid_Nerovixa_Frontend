@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { authApi } from '../api/client'
+import { clearSession, fetchCurrentUser } from '../auth/session'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -42,28 +42,35 @@ const router = createRouter({
       meta: { guest: true },
     },
     {
-      path: '/admin/users',
-      name: 'admin-users',
-      component: () => import('../views/AdminUsersView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true },
-    },
-    {
-      path: '/home',
-      name: 'home',
-      component: () => import('../views/HomeView.vue'),
+      path: '/',
+      component: () => import('../components/AppLayout.vue'),
       meta: { requiresAuth: true },
-    },
-    {
-      path: '/jobs',
-      name: 'jobs',
-      component: () => import('../views/JobsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/settings',
-      name: 'settings',
-      component: () => import('../views/SettingsView.vue'),
-      meta: { requiresAuth: true },
+      children: [
+        {
+          path: 'admin/users',
+          name: 'admin-users',
+          component: () => import('../views/AdminUsersView.vue'),
+          meta: { requiresAuth: true, requiresAdmin: true },
+        },
+        {
+          path: 'home',
+          name: 'home',
+          component: () => import('../views/HomeView.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'jobs',
+          name: 'jobs',
+          component: () => import('../views/JobsView.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'settings',
+          name: 'settings',
+          component: () => import('../views/SettingsView.vue'),
+          meta: { requiresAuth: true },
+        },
+      ],
     },
   ],
 })
@@ -81,12 +88,12 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresAuth && token) {
     try {
-      const { data } = await authApi.me()
-      if (to.meta.requiresAdmin && data.role !== 'admin' && data.email.toLowerCase() !== 'hoyosnohor@gmail.com') {
+      const user = await fetchCurrentUser()
+      if (to.meta.requiresAdmin && user.role !== 'admin' && user.email.toLowerCase() !== 'hoyosnohor@gmail.com') {
         return { name: 'home' }
       }
     } catch {
-      localStorage.removeItem('access_token')
+      clearSession()
       return { name: 'login' }
     }
   }

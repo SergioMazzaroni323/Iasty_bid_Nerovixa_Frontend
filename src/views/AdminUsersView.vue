@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import AppLayout from '../components/AppLayout.vue'
 import { adminApi, type AdminUser, type UserStatus } from '../api/admin'
-import { authApi } from '../api/client'
+import { fetchCurrentUser, clearSession } from '../auth/session'
 
 const router = useRouter()
 const users = ref<AdminUser[]>([])
@@ -13,7 +12,7 @@ const actionMessage = ref('')
 const busyId = ref<number | null>(null)
 
 async function ensureAdmin() {
-  const { data } = await authApi.me()
+  const data = await fetchCurrentUser()
   if (data.role !== 'admin' && data.email.toLowerCase() !== 'hoyosnohor@gmail.com') {
     await router.replace({ name: 'home' })
     return false
@@ -131,15 +130,14 @@ onMounted(async () => {
     if (!(await ensureAdmin())) return
     await loadUsers()
   } catch {
-    localStorage.removeItem('access_token')
+    clearSession()
     await router.push({ name: 'login' })
   }
 })
 </script>
 
 <template>
-  <AppLayout>
-    <div class="space-y-4 sm:space-y-6">
+  <div class="space-y-4 sm:space-y-6">
       <section class="app-card">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -235,5 +233,4 @@ onMounted(async () => {
         </div>
       </section>
     </div>
-  </AppLayout>
 </template>

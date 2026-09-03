@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import AppLayout from '../components/AppLayout.vue'
 import {
   EMPLOYMENT_TYPES,
   jobsApi,
@@ -16,7 +15,7 @@ import {
 
 const jobs = ref<Job[]>([])
 const total = ref(0)
-const loading = ref(false)
+const loading = ref(true)
 const error = ref('')
 const filtersOpen = ref(false)
 
@@ -259,36 +258,42 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <AppLayout>
-    <template #header-actions>
-      <div class="flex items-center gap-2 sm:gap-3">
-        <p
-          v-if="scrapeMessage"
-          class="hidden max-w-[16rem] truncate text-right text-xs text-slate-600 dark:text-slate-400 lg:block"
-          :title="scrapeMessage"
-        >
-          {{ scrapeMessage }}
-        </p>
-        <button
-          type="button"
-          class="app-btn-scrape !px-3 !py-2 text-xs sm:!px-4 sm:!py-2.5 sm:text-sm"
-          :disabled="scraping || scrapeStatus?.available_templates === 0"
-          @click="startScraping"
-        >
-          <span v-if="scraping" class="app-spinner" />
-          <span class="sm:hidden">{{ scraping ? 'Scraping…' : 'Scrape' }}</span>
-          <span class="hidden sm:inline">{{ scraping ? 'Scraping…' : 'Scrape more jobs' }}</span>
-        </button>
-        <button
-          v-if="scraping"
-          type="button"
-          class="app-btn-stop !px-3 !py-2 text-xs sm:!px-4 sm:!py-2.5 sm:text-sm"
-          @click="stopScraping"
-        >
-          Stop
-        </button>
-      </div>
-    </template>
+  <div class="relative" :class="loading ? 'min-h-[360px]' : ''">
+    <div
+      v-if="loading"
+      class="absolute inset-0 z-20 flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-2xl bg-white/80 dark:bg-slate-950/80"
+    >
+      <span class="inline-block h-9 w-9 animate-spin rounded-full border-[3px] border-indigo-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-400" />
+      <p class="text-sm font-medium text-slate-600 dark:text-slate-300">Loading jobs…</p>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-end gap-2 pb-3 sm:gap-3">
+      <p
+        v-if="scrapeMessage"
+        class="hidden max-w-[16rem] truncate text-right text-xs text-slate-600 dark:text-slate-400 lg:block"
+        :title="scrapeMessage"
+      >
+        {{ scrapeMessage }}
+      </p>
+      <button
+        type="button"
+        class="app-btn-scrape !px-3 !py-2 text-xs sm:!px-4 sm:!py-2.5 sm:text-sm"
+        :disabled="scraping || scrapeStatus?.available_templates === 0"
+        @click="startScraping"
+      >
+        <span v-if="scraping" class="app-spinner" />
+        <span class="sm:hidden">{{ scraping ? 'Scraping…' : 'Scrape' }}</span>
+        <span class="hidden sm:inline">{{ scraping ? 'Scraping…' : 'Scrape more jobs' }}</span>
+      </button>
+      <button
+        v-if="scraping"
+        type="button"
+        class="app-btn-stop !px-3 !py-2 text-xs sm:!px-4 sm:!py-2.5 sm:text-sm"
+        @click="stopScraping"
+      >
+        Stop
+      </button>
+    </div>
 
     <section class="app-card overflow-hidden !p-0">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-6 sm:py-4">
@@ -416,6 +421,8 @@ onUnmounted(() => {
 
         <p v-if="error" class="auth-error px-4 py-3 sm:px-6">{{ error }}</p>
 
+        <div v-show="!loading">
+
         <!-- Mobile card list -->
         <div v-if="!loading && jobs.length === 0" class="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400 md:hidden">
           No jobs match your filters.
@@ -531,6 +538,7 @@ onUnmounted(() => {
             Next
           </button>
         </div>
+        </div>
       </section>
-  </AppLayout>
+  </div>
 </template>
