@@ -258,15 +258,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative" :class="loading ? 'min-h-[360px]' : ''">
-    <div
-      v-if="loading"
-      class="absolute inset-0 z-20 flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-2xl bg-white/80 dark:bg-slate-950/80"
-    >
-      <span class="inline-block h-9 w-9 animate-spin rounded-full border-[3px] border-indigo-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-400" />
-      <p class="text-sm font-medium text-slate-600 dark:text-slate-300">Loading jobs…</p>
-    </div>
-
+  <div>
     <div class="flex flex-wrap items-center justify-end gap-2 pb-3 sm:gap-3">
       <p
         v-if="scrapeMessage"
@@ -302,7 +294,6 @@ onUnmounted(() => {
             <p class="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">{{ total }} job{{ total === 1 ? '' : 's' }} found</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <span v-if="loading" class="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">Loading...</span>
             <button
               type="button"
               class="inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition"
@@ -421,14 +412,17 @@ onUnmounted(() => {
 
         <p v-if="error" class="auth-error px-4 py-3 sm:px-6">{{ error }}</p>
 
-        <div v-show="!loading">
-
         <!-- Mobile card list -->
-        <div v-if="!loading && jobs.length === 0" class="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400 md:hidden">
+        <div v-if="loading" class="flex flex-col items-center justify-center gap-3 bg-white px-4 py-16 dark:bg-slate-900 md:hidden">
+          <span class="inline-block h-8 w-8 animate-spin rounded-full border-[3px] border-indigo-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-400" />
+          <p class="text-sm font-medium text-slate-600 dark:text-slate-300">Loading jobs…</p>
+        </div>
+
+        <div v-else-if="jobs.length === 0" class="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400 md:hidden">
           No jobs match your filters.
         </div>
 
-        <div class="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
+        <div v-else class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900 md:hidden">
           <article v-for="job in jobs" :key="job.id" class="app-job-card">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
@@ -477,7 +471,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Desktop table -->
-        <div class="hidden overflow-x-auto md:block">
+        <div class="hidden overflow-x-auto bg-white dark:bg-slate-900 md:block">
           <table class="app-table">
             <thead>
               <tr>
@@ -494,10 +488,19 @@ onUnmounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-if="!loading && jobs.length === 0">
-                <td colspan="10" class="px-6 py-10 text-center text-slate-500 dark:text-slate-400">No jobs match your filters.</td>
+              <tr v-if="loading">
+                <td colspan="10" class="bg-white px-6 py-16 text-center dark:bg-slate-900">
+                  <div class="flex flex-col items-center justify-center gap-3">
+                    <span class="inline-block h-8 w-8 animate-spin rounded-full border-[3px] border-indigo-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-400" />
+                    <p class="text-sm font-medium text-slate-600 dark:text-slate-300">Loading jobs…</p>
+                  </div>
+                </td>
               </tr>
-              <tr v-for="job in jobs" :key="job.id" class="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/30">
+              <tr v-else-if="jobs.length === 0">
+                <td colspan="10" class="bg-white px-6 py-10 text-center text-slate-500 dark:bg-slate-900 dark:text-slate-400">No jobs match your filters.</td>
+              </tr>
+              <template v-else>
+                <tr v-for="job in jobs" :key="job.id" class="bg-white transition hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800">
                 <td class="max-w-[200px] font-medium text-slate-900 dark:text-slate-100">
                   {{ job.job_title }}
                 </td>
@@ -521,7 +524,8 @@ onUnmounted(() => {
                 <td><span class="app-badge app-badge-muted">{{ formatLabel(job.employment_type) }}</span></td>
                 <td>{{ job.salary_expected || '—' }}</td>
                 <td>{{ job.industry || '—' }}</td>
-              </tr>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -537,7 +541,6 @@ onUnmounted(() => {
           <button type="button" class="app-btn-secondary order-3" :disabled="page >= totalPages" @click="page++">
             Next
           </button>
-        </div>
         </div>
       </section>
   </div>
