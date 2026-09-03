@@ -8,10 +8,10 @@ import {
   type EmploymentType,
   type Job,
   type JobSortField,
-  type ScrapeStatus,
   type SortOrder,
   type WorkMode,
 } from '../api/jobs'
+import { useJobScraper } from '../composables/useJobScraper'
 
 const jobs = ref<Job[]>([])
 const total = ref(0)
@@ -19,9 +19,7 @@ const loading = ref(true)
 const error = ref('')
 const filtersOpen = ref(false)
 
-const scraping = ref(false)
-const scrapeMessage = ref('')
-const scrapeStatus = ref<ScrapeStatus | null>(null)
+const { registerHandlers, clearHandlers } = useJobScraper()
 
 const companies = ref<string[]>([])
 const industries = ref<string[]>([])
@@ -50,16 +48,6 @@ const activeFilterCount = computed(() => {
 })
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
-let scrapeTimer: ReturnType<typeof setTimeout> | null = null
-
-function randomScrapeDelay() {
-  return 400 + Math.random() * 300
-}
-
-async function loadScrapeStatus() {
-  const { data } = await jobsApi.scrapeStatus()
-  scrapeStatus.value = data
-}
 
 async function loadFilterOptions() {
   const { data } = await jobsApi.filterOptions()
@@ -101,74 +89,6 @@ function prependJob(job: Job) {
     total.value += 1
   } else {
     loadJobs()
-  }
-}
-
-function scheduleScrapeNext() {
-  if (!scraping.value) {
-    return
-  }
-  scrapeTimer = setTimeout(async () => {
-    if (!scraping.value) {
-      return
-    }
-    try {
-      const { data } = await jobsApi.scrapeNext()
-      await loadScrapeStatus()
-
-      if (data.status === 'added' && data.job) {
-        prependJob(data.job)
-        await loadFilterOptions()
-        scrapeMessage.value = `Scraping… ${scrapeStatus.value?.imported_count ?? 0} jobs imported`
-        scheduleScrapeNext()
-        return
-      }
-
-      if (data.status === 'completed') {
-        scrapeMessage.value = 'Scraping completed — all available jobs imported.'
-      } else {
-        scrapeMessage.value = 'Scraping stopped.'
-      }
-      scraping.value = false
-      await loadJobs()
-      await loadFilterOptions()
-    } catch {
-      error.value = 'Scraping failed. Please try again.'
-      scraping.value = false
-    }
-  }, randomScrapeDelay())
-}
-
-async function startScraping() {
-  error.value = ''
-  try {
-    const { data } = await jobsApi.scrapeStart()
-    scrapeStatus.value = data
-    scraping.value = true
-    scrapeMessage.value = 'Scraping started…'
-    scheduleScrapeNext()
-  } catch {
-    error.value = 'Failed to start scraping.'
-  }
-}
-
-async function stopScraping() {
-  scraping.value = false
-  if (scrapeTimer) {
-    clearTimeout(scrapeTimer)
-    scrapeTimer = null
-  }
-  try {
-    await jobsApi.scrapeStop()
-    scrapeMessage.value = ''
-    page.value = 1
-    sortBy.value = 'created_at'
-    sortOrder.value = 'desc'
-    await loadJobs()
-    await loadFilterOptions()
-    await loadScrapeStatus()
-  } catch {
-    error.value = 'Failed to stop scraping.'
   }
 }
 
@@ -237,12 +157,22 @@ watch(search, () => {
 })
 
 onMounted(async () => {
-  await loadScrapeStatus()
-  if (scrapeStatus.value?.is_active) {
-    scraping.value = true
-    scrapeMessage.value = 'Scraping in progress…'
-    scheduleScrapeNext()
-  }
+  registerHandlers({
+    onJobAdded: (job) => {
+      prependJob(job)
+      loadFilterOptions()
+    },
+    onScrapeComplete: async () => {
+      page.value = 1
+      sortBy.value = 'created_at'
+      sortOrder.value = 'desc'
+      await loadJobs()
+      await loadFilterOptions()
+    },
+    onScrapeError: (message) => {
+      error.value = message
+    },
+  })
   await loadFilterOptions()
   await loadJobs()
 })
@@ -251,42 +181,12 @@ onUnmounted(() => {
   if (searchTimer) {
     clearTimeout(searchTimer)
   }
-  if (scrapeTimer) {
-    clearTimeout(scrapeTimer)
-  }
+  clearHandlers()
 })
 </script>
 
 <template>
   <div>
-    <div class="flex flex-wrap items-center justify-end gap-2 pb-3 sm:gap-3">
-      <p
-        v-if="scrapeMessage"
-        class="hidden max-w-[16rem] truncate text-right text-xs text-slate-600 dark:text-slate-400 lg:block"
-        :title="scrapeMessage"
-      >
-        {{ scrapeMessage }}
-      </p>
-      <button
-        type="button"
-        class="app-btn-scrape !px-3 !py-2 text-xs sm:!px-4 sm:!py-2.5 sm:text-sm"
-        :disabled="scraping || scrapeStatus?.available_templates === 0"
-        @click="startScraping"
-      >
-        <span v-if="scraping" class="app-spinner" />
-        <span class="sm:hidden">{{ scraping ? 'Scraping…' : 'Scrape' }}</span>
-        <span class="hidden sm:inline">{{ scraping ? 'Scraping…' : 'Scrape more jobs' }}</span>
-      </button>
-      <button
-        v-if="scraping"
-        type="button"
-        class="app-btn-stop !px-3 !py-2 text-xs sm:!px-4 sm:!py-2.5 sm:text-sm"
-        @click="stopScraping"
-      >
-        Stop
-      </button>
-    </div>
-
     <section class="app-card overflow-hidden !p-0">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-6 sm:py-4">
           <div>

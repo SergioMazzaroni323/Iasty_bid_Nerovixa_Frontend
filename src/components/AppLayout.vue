@@ -3,20 +3,18 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { clearSession, fetchCurrentUser } from '../auth/session'
 import type { UserResponse } from '../api/client'
+import { useJobScraper } from '../composables/useJobScraper'
 import AppLogo from './AppLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
 const user = ref<UserResponse | null>(null)
 const mobileMenuOpen = ref(false)
+const { scraping, scrapeMessage, scrapeStatus, startScraping, stopScraping, initScrapeSession } = useJobScraper()
 
-const isAdmin = computed(
-  () =>
-    user.value?.role === 'admin' ||
-    user.value?.email?.toLowerCase() === 'hoyosnohor@gmail.com',
-)
+const isJobsPage = computed(() => route.name === 'jobs')
 
-const baseNavItems = [
+const navItems = [
   {
     name: 'home',
     label: 'Dashboard',
@@ -37,25 +35,15 @@ const baseNavItems = [
   },
 ]
 
-const adminNavItem = {
-  name: 'admin-users',
-  label: 'User management',
-  to: '/admin/users',
-  icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z',
-}
-
-const navItems = computed(() =>
-  isAdmin.value ? [adminNavItem, ...baseNavItems] : baseNavItems,
-)
-
 const pageTitle = computed(() => {
-  const item = navItems.value.find((entry) => entry.name === route.name)
+  const item = navItems.find((entry) => entry.name === route.name)
   return item?.label ?? 'Nerovixa'
 })
 
 onMounted(async () => {
   try {
     user.value = await fetchCurrentUser()
+    await initScrapeSession()
   } catch {
     clearSession()
     await router.push({ name: 'login' })
@@ -201,6 +189,33 @@ function navClass(active: boolean) {
             </p>
           </div>
 
+          <div v-if="isJobsPage" class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <p
+              v-if="scrapeMessage"
+              class="hidden max-w-[14rem] truncate text-right text-xs text-slate-600 dark:text-slate-400 xl:block"
+              :title="scrapeMessage"
+            >
+              {{ scrapeMessage }}
+            </p>
+            <button
+              type="button"
+              class="app-btn-scrape !px-3 !py-2 text-xs sm:!px-4 sm:!py-2.5 sm:text-sm"
+              :disabled="scraping || scrapeStatus?.available_templates === 0"
+              @click="startScraping"
+            >
+              <span v-if="scraping" class="app-spinner" />
+              <span class="sm:hidden">{{ scraping ? 'Scraping…' : 'Scrape' }}</span>
+              <span class="hidden sm:inline">{{ scraping ? 'Scraping…' : 'Scrape more jobs' }}</span>
+            </button>
+            <button
+              v-if="scraping"
+              type="button"
+              class="app-btn-stop !px-3 !py-2 text-xs sm:!px-4 sm:!py-2.5 sm:text-sm"
+              @click="stopScraping"
+            >
+              Stop
+            </button>
+          </div>
         </div>
       </header>
 

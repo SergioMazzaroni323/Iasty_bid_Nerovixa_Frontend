@@ -47,12 +47,6 @@ const router = createRouter({
       meta: { requiresAuth: true },
       children: [
         {
-          path: 'admin/users',
-          name: 'admin-users',
-          component: () => import('../views/AdminUsersView.vue'),
-          meta: { requiresAuth: true, requiresAdmin: true },
-        },
-        {
           path: 'home',
           name: 'home',
           component: () => import('../views/HomeView.vue'),
@@ -88,10 +82,7 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresAuth && token) {
     try {
-      const user = await fetchCurrentUser()
-      if (to.meta.requiresAdmin && user.role !== 'admin' && user.email.toLowerCase() !== 'hoyosnohor@gmail.com') {
-        return { name: 'home' }
-      }
+      await fetchCurrentUser()
     } catch {
       clearSession()
       return { name: 'login' }
