@@ -4,6 +4,9 @@ import { jobsApi, type WorkMode } from '../api/jobs'
 const WORK_MODES: WorkMode[] = ['remote', 'hybrid', 'on-site']
 export const DASHBOARD_DAYS = 7
 
+const APPLIED_MIN = 31
+const APPLIED_MAX = 39
+
 function dateKey(d: Date) {
   return d.toISOString().slice(0, 10)
 }
@@ -24,33 +27,81 @@ function seededRandom(seed: number) {
   }
 }
 
+function weekSeed(userSeed: number) {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), 0, 1)
+  const week = Math.floor((now.getTime() - start.getTime()) / (7 * 86_400_000))
+  return mixSeed(userSeed, week, now.getFullYear())
+}
+
+function shuffle<T>(items: T[], rng: () => number) {
+  const list = [...items]
+  for (let i = list.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[list[i], list[j]] = [list[j], list[i]]
+  }
+  return list
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value))
+}
+
+function generateAppliedCounts(rng: () => number, days: number): number[] {
+  const pool = Array.from({ length: APPLIED_MAX - APPLIED_MIN + 1 }, (_, i) => APPLIED_MIN + i)
+  const shuffled = shuffle(pool, rng)
+  const values: number[] = []
+
+  for (let i = 0; i < days; i += 1) {
+    if (i < shuffled.length) {
+      values.push(shuffled[i])
+      continue
+    }
+
+    const prev = values[i - 1]
+    let next = prev
+    for (let attempt = 0; attempt < 12 && next === prev; attempt += 1) {
+      const delta = Math.floor(rng() * 7) - 3
+      next = clamp(prev + delta, APPLIED_MIN, APPLIED_MAX)
+    }
+    values.push(next)
+  }
+
+  for (let i = 1; i < values.length; i += 1) {
+    if (values[i] === values[i - 1]) {
+      const bump = rng() > 0.5 ? 1 : -1
+      values[i] = clamp(values[i] + bump, APPLIED_MIN, APPLIED_MAX)
+    }
+  }
+
+  return values
+}
+
+function generateResumeCounts(applied: number[], rng: () => number): number[] {
+  return applied.map((count) => {
+    const gap = 2 + Math.floor(rng() * 6)
+    const jitter = Math.floor(rng() * 5) - 2
+    return clamp(count - gap + jitter, 1, count - 1)
+  })
+}
+
 function generateDemoDailySeries(userSeed: number, days: number): { applications: DailyCount[]; resumes: DailyCount[] } {
+  const rng = seededRandom(weekSeed(userSeed))
+  const resRng = seededRandom(weekSeed(userSeed) ^ 0xabcdef)
+
+  const appliedCounts = generateAppliedCounts(rng, days)
+  const resumeCounts = generateResumeCounts(appliedCounts, resRng)
+
   const applications: DailyCount[] = []
   const resumes: DailyCount[] = []
   const today = new Date()
   today.setHours(12, 0, 0, 0)
 
-  const appliedPool = [31, 32, 33, 34, 35, 36, 37, 38, 39]
-
   for (let offset = 0; offset < days; offset += 1) {
     const day = new Date(today)
     day.setDate(today.getDate() - (days - 1 - offset))
-    const dayOrdinal = Math.floor(day.getTime() / 86_400_000)
-
-    const appRng = seededRandom(mixSeed(userSeed, dayOrdinal, 101))
-    const resRng = seededRandom(mixSeed(userSeed, dayOrdinal, 202))
-
-    const applied = appliedPool[Math.floor(appRng() * appliedPool.length)]
-
-    const gap = 2 + Math.floor(resRng() * 7)
-    let resume = applied - gap
-    if (resRng() > 0.55) {
-      resume += Math.floor(resRng() * 3) - 1
-    }
-    resume = Math.max(1, Math.min(applied - 1, resume))
-
-    applications.push({ date: dateKey(day), count: applied })
-    resumes.push({ date: dateKey(day), count: resume })
+    applications.push({ date: dateKey(day), count: appliedCounts[offset] })
+    resumes.push({ date: dateKey(day), count: resumeCounts[offset] })
   }
 
   return { applications, resumes }
