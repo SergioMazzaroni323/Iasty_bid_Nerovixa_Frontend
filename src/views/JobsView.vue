@@ -33,7 +33,7 @@ const location = ref('')
 const sortBy = ref<JobSortField>('created_at')
 const sortOrder = ref<SortOrder>('desc')
 const page = ref(1)
-const PAGE_SIZE = 10
+const PAGE_SIZE = 20
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
 const activeFilterCount = computed(() => {

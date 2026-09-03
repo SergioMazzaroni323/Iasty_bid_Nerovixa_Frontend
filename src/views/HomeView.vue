@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { fetchCurrentUser, getCachedUser } from '../auth/session'
 import type { UserResponse } from '../api/client'
 import { dashboardApi, type DashboardStats } from '../api/dashboard'
+import { buildDashboardStats } from '../utils/dashboardStats'
 import WorkModeDonut from '../components/dashboard/WorkModeDonut.vue'
 import DailyBarChart from '../components/dashboard/DailyBarChart.vue'
 
@@ -11,11 +12,20 @@ const stats = ref<DashboardStats | null>(null)
 const loading = ref(true)
 const error = ref('')
 
-onMounted(async () => {
+async function loadStats(currentUser: UserResponse) {
   try {
-    user.value = await fetchCurrentUser()
     const { data } = await dashboardApi.stats()
     stats.value = data
+  } catch {
+    stats.value = await buildDashboardStats(currentUser.id)
+  }
+}
+
+onMounted(async () => {
+  try {
+    const currentUser = await fetchCurrentUser()
+    user.value = currentUser
+    await loadStats(currentUser)
   } catch {
     error.value = 'Failed to load dashboard stats.'
   } finally {
@@ -72,7 +82,6 @@ onMounted(async () => {
             v-else-if="stats"
             :items="stats.applications_by_day"
             color="#6366f1"
-            empty-label="Applications will appear here when you submit jobs"
           />
         </div>
       </section>
@@ -88,7 +97,6 @@ onMounted(async () => {
             v-else-if="stats"
             :items="stats.resumes_by_day"
             color="#8b5cf6"
-            empty-label="Resume generations will appear here from the extension"
           />
         </div>
       </section>
