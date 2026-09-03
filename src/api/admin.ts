@@ -15,11 +15,23 @@ export interface AdminUserListResponse {
   total: number
 }
 
+function detailMessage(error: unknown, fallback: string) {
+  const err = error as { response?: { data?: { detail?: unknown } } }
+  const detail = err.response?.data?.detail
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => (typeof item === 'object' && item && 'msg' in item ? String((item as { msg: string }).msg) : String(item)))
+      .join('; ')
+  }
+  return fallback
+}
+
 export const adminApi = {
   listUsers: () => api.get<AdminUserListResponse>('/admin/users'),
 
   updateStatus: (userId: number, status: UserStatus) =>
-    api.patch<AdminUser>(`/admin/users/${userId}/status`, { status }),
+    api.post<AdminUser>(`/admin/users/${userId}/status`, { status }),
 
   resetPassword: (userId: number, password?: string) =>
     api.post<{ message: string }>(
@@ -29,4 +41,6 @@ export const adminApi = {
 
   removeUser: (userId: number) =>
     api.delete<{ message: string }>(`/admin/users/${userId}`),
+
+  detailMessage,
 }

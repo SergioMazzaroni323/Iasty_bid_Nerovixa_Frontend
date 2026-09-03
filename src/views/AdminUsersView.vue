@@ -12,6 +12,8 @@ const error = ref('')
 const actionMessage = ref('')
 const busyId = ref<number | null>(null)
 
+const statusOptions: UserStatus[] = ['pending', 'active', 'deactive']
+
 async function ensureAdmin() {
   const { data } = await authApi.me()
   if (data.role !== 'admin' && data.email.toLowerCase() !== 'hoyosnohor@gmail.com') {
@@ -28,14 +30,19 @@ async function loadUsers() {
     const { data } = await adminApi.listUsers()
     users.value = data.items
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { detail?: string } } }
-    error.value = err.response?.data?.detail ?? 'Failed to load users.'
+    error.value = adminApi.detailMessage(e, 'Failed to load users.')
   } finally {
     loading.value = false
   }
 }
 
 async function setStatus(user: AdminUser, status: UserStatus) {
+  if (user.status === status) return
+  if (user.role === 'admin' || user.email.toLowerCase() === 'hoyosnohor@gmail.com') {
+    error.value = 'Cannot change the primary admin account status.'
+    return
+  }
+
   busyId.value = user.id
   actionMessage.value = ''
   error.value = ''
@@ -44,8 +51,7 @@ async function setStatus(user: AdminUser, status: UserStatus) {
     users.value = users.value.map((item) => (item.id === user.id ? data : item))
     actionMessage.value = `${user.email} is now ${status}.`
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { detail?: string } } }
-    error.value = err.response?.data?.detail ?? 'Failed to update status.'
+    error.value = adminApi.detailMessage(e, 'Failed to update status.')
   } finally {
     busyId.value = null
   }
@@ -70,8 +76,7 @@ async function resetPassword(user: AdminUser) {
     const { data } = await adminApi.resetPassword(user.id, trimmed || undefined)
     actionMessage.value = data.message
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { detail?: string } } }
-    error.value = err.response?.data?.detail ?? 'Failed to reset password.'
+    error.value = adminApi.detailMessage(e, 'Failed to reset password.')
   } finally {
     busyId.value = null
   }
@@ -88,17 +93,24 @@ async function removeAccount(user: AdminUser) {
     users.value = users.value.filter((item) => item.id !== user.id)
     actionMessage.value = data.message
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { detail?: string } } }
-    error.value = err.response?.data?.detail ?? 'Failed to remove account.'
+    error.value = adminApi.detailMessage(e, 'Failed to remove account.')
   } finally {
     busyId.value = null
   }
 }
 
 function statusClass(status: UserStatus) {
-  if (status === 'active') return 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/50'
-  if (status === 'pending') return 'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/50'
+  if (status === 'active') {
+    return 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/50'
+  }
+  if (status === 'pending') {
+    return 'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/50'
+  }
   return 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700'
+}
+
+function isPrimaryAdmin(user: AdminUser) {
+  return user.role === 'admin' || user.email.toLowerCase() === 'hoyosnohor@gmail.com'
 }
 
 onMounted(async () => {
@@ -165,45 +177,49 @@ onMounted(async () => {
                   </span>
                 </td>
                 <td>
-                  <span class="text-sm font-medium" :class="user.is_verified ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'">
+                  <span
+                    class="text-sm font-medium"
+                    :class="user.is_verified ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'"
+                  >
                     {{ user.is_verified ? 'Yes' : 'No' }}
                   </span>
                 </td>
                 <td>
-                  <div class="flex flex-col gap-2">
+                  <div class="flex min-w-[220px] flex-col gap-2">
                     <span
-                      class="inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold ring-1"
+                      class="inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold uppercase ring-1"
                       :class="statusClass(user.status)"
                     >
                       {{ user.status }}
                     </span>
-                    <div class="flex flex-wrap gap-1.5">
+
+                    <div class="flex flex-wrap items-center gap-2">
+                      <select
+                        class="app-input !py-1.5 text-xs"
+                        :value="user.status"
+                        :disabled="busyId === user.id || isPrimaryAdmin(user)"
+                        @change="setStatus(user, ($event.target as HTMLSelectElement).value as UserStatus)"
+                      >
+                        <option v-for="option in statusOptions" :key="option" :value="option">
+                          {{ option }}
+                        </option>
+                      </select>
+
                       <button
-                        v-if="user.status !== 'active'"
                         type="button"
-                        class="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
-                        :disabled="busyId === user.id || !user.is_verified"
+                        class="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                        :disabled="busyId === user.id || isPrimaryAdmin(user) || user.status === 'active'"
                         @click="setStatus(user, 'active')"
                       >
-                        Approve
+                        Activate
                       </button>
                       <button
-                        v-if="user.status !== 'deactive'"
                         type="button"
-                        class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                        :disabled="busyId === user.id || user.role === 'admin'"
+                        class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                        :disabled="busyId === user.id || isPrimaryAdmin(user) || user.status === 'deactive'"
                         @click="setStatus(user, 'deactive')"
                       >
                         Deactivate
-                      </button>
-                      <button
-                        v-if="user.status === 'deactive'"
-                        type="button"
-                        class="rounded-lg border border-amber-200 px-2.5 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50 dark:border-amber-900/50 dark:text-amber-300"
-                        :disabled="busyId === user.id"
-                        @click="setStatus(user, 'pending')"
-                      >
-                        Set pending
                       </button>
                     </div>
                   </div>
@@ -222,7 +238,7 @@ onMounted(async () => {
                   <button
                     type="button"
                     class="rounded-xl border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-500/30 dark:bg-slate-900 dark:text-red-400 dark:hover:bg-red-950/30"
-                    :disabled="busyId === user.id || user.role === 'admin'"
+                    :disabled="busyId === user.id || isPrimaryAdmin(user)"
                     @click="removeAccount(user)"
                   >
                     Remove
