@@ -42,6 +42,12 @@ const router = createRouter({
       meta: { guest: true },
     },
     {
+      path: '/admin/users',
+      name: 'admin-users',
+      component: () => import('../views/AdminUsersView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: '/home',
       name: 'home',
       component: () => import('../views/HomeView.vue'),
@@ -75,7 +81,10 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresAuth && token) {
     try {
-      await authApi.me()
+      const { data } = await authApi.me()
+      if (to.meta.requiresAdmin && data.role !== 'admin' && data.email.toLowerCase() !== 'hoyosnohor@gmail.com') {
+        return { name: 'home' }
+      }
     } catch {
       localStorage.removeItem('access_token')
       return { name: 'login' }

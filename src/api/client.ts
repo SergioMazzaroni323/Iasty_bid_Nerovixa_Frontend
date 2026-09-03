@@ -26,6 +26,8 @@ export interface UserResponse {
   id: number
   email: string
   is_verified: boolean
+  role?: 'admin' | 'user'
+  status?: 'pending' | 'active' | 'deactive'
 }
 
 export const authApi = {
