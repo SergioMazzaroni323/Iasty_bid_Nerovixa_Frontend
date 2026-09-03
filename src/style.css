@@ -83,7 +83,14 @@
 
   .app-table-jobs td,
   .app-table-jobs th {
-    @apply overflow-hidden;
+    @apply overflow-hidden px-3 py-2.5;
+  }
+
+  .app-table-jobs td:nth-child(7),
+  .app-table-jobs td:nth-child(8),
+  .app-table-jobs th:nth-child(7),
+  .app-table-jobs th:nth-child(8) {
+    @apply whitespace-normal break-words;
   }
 
   .app-table thead {

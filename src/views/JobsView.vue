@@ -123,13 +123,6 @@ function sortIcon(column: JobSortField) {
   return sortOrder.value === 'asc' ? '↑' : '↓'
 }
 
-function truncate(text: string | null, max = 80) {
-  if (!text) {
-    return '—'
-  }
-  return text.length > max ? `${text.slice(0, max)}…` : text
-}
-
 function formatLabel(value: string) {
   return value
     .split('-')
@@ -338,8 +331,6 @@ onUnmounted(() => {
               <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{{ job.company_name }}</p>
             </div>
 
-            <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{{ truncate(job.job_description, 120) }}</p>
-
             <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
               <div>
                 <dt class="text-slate-400 dark:text-slate-500">Role</dt>
@@ -372,19 +363,18 @@ onUnmounted(() => {
             <thead>
               <tr>
                 <th class="w-[18%]"><button type="button" class="app-sort-btn" @click="toggleSort('job_title')">Job title {{ sortIcon('job_title') }}</button></th>
-                <th class="w-[14%]"><button type="button" class="app-sort-btn" @click="toggleSort('company_name')">Company {{ sortIcon('company_name') }}</button></th>
-                <th class="w-[20%]">Description</th>
+                <th class="w-[13%]"><button type="button" class="app-sort-btn" @click="toggleSort('company_name')">Company {{ sortIcon('company_name') }}</button></th>
                 <th class="w-[11%]">Required role</th>
                 <th class="w-[13%]"><button type="button" class="app-sort-btn" @click="toggleSort('required_locations')">Locations {{ sortIcon('required_locations') }}</button></th>
-                <th class="w-[8%]"><button type="button" class="app-sort-btn" @click="toggleSort('work_mode')">Work mode {{ sortIcon('work_mode') }}</button></th>
-                <th class="w-[8%]"><button type="button" class="app-sort-btn" @click="toggleSort('employment_type')">Type {{ sortIcon('employment_type') }}</button></th>
-                <th class="w-[4%]"><button type="button" class="app-sort-btn" @click="toggleSort('salary_expected')">Salary {{ sortIcon('salary_expected') }}</button></th>
-                <th class="w-[4%]"><button type="button" class="app-sort-btn" @click="toggleSort('industry')">Industry {{ sortIcon('industry') }}</button></th>
+                <th class="w-[9%]"><button type="button" class="app-sort-btn" @click="toggleSort('work_mode')">Work mode {{ sortIcon('work_mode') }}</button></th>
+                <th class="w-[9%]"><button type="button" class="app-sort-btn" @click="toggleSort('employment_type')">Type {{ sortIcon('employment_type') }}</button></th>
+                <th class="w-[14%]"><button type="button" class="app-sort-btn" @click="toggleSort('salary_expected')">Salary {{ sortIcon('salary_expected') }}</button></th>
+                <th class="w-[13%]"><button type="button" class="app-sort-btn" @click="toggleSort('industry')">Industry {{ sortIcon('industry') }}</button></th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="loading">
-                <td colspan="9" class="bg-white px-6 py-16 text-center dark:bg-slate-900">
+                <td colspan="8" class="bg-white px-6 py-16 text-center dark:bg-slate-900">
                   <div class="flex flex-col items-center justify-center gap-3">
                     <span class="inline-block h-8 w-8 animate-spin rounded-full border-[3px] border-indigo-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-400" />
                     <p class="text-sm font-medium text-slate-600 dark:text-slate-300">Loading jobs…</p>
@@ -392,7 +382,7 @@ onUnmounted(() => {
                 </td>
               </tr>
               <tr v-else-if="jobs.length === 0">
-                <td colspan="9" class="bg-white px-6 py-10 text-center text-slate-500 dark:bg-slate-900 dark:text-slate-400">No jobs match your filters.</td>
+                <td colspan="8" class="bg-white px-6 py-10 text-center text-slate-500 dark:bg-slate-900 dark:text-slate-400">No jobs match your filters.</td>
               </tr>
               <template v-else>
                 <tr v-for="job in jobs" :key="job.id" class="bg-white transition hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800">
@@ -411,13 +401,12 @@ onUnmounted(() => {
                 <td class="max-w-0 truncate" :title="job.company_name">
                   {{ job.company_name }}
                 </td>
-                <td class="max-w-0 whitespace-normal break-words text-slate-600 dark:text-slate-400" :title="job.job_description ?? undefined">{{ truncate(job.job_description, 60) }}</td>
                 <td class="max-w-0 truncate" :title="job.required_role ?? undefined">{{ job.required_role || '—' }}</td>
-                <td class="max-w-0 whitespace-normal break-words" :title="job.required_locations ?? undefined">{{ job.required_locations || '—' }}</td>
+                <td class="max-w-0 truncate" :title="job.required_locations ?? undefined">{{ job.required_locations || '—' }}</td>
                 <td><span class="app-badge">{{ formatLabel(job.work_mode) }}</span></td>
                 <td><span class="app-badge app-badge-muted">{{ formatLabel(job.employment_type) }}</span></td>
-                <td class="max-w-0 truncate" :title="job.salary_expected ?? undefined">{{ job.salary_expected || '—' }}</td>
-                <td class="max-w-0 truncate" :title="job.industry ?? undefined">{{ job.industry || '—' }}</td>
+                <td class="max-w-0" :title="job.salary_expected ?? undefined">{{ job.salary_expected || '—' }}</td>
+                <td class="max-w-0" :title="job.industry ?? undefined">{{ job.industry || '—' }}</td>
                 </tr>
               </template>
             </tbody>
