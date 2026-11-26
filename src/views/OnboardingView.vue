@@ -35,8 +35,8 @@ const photos = reactive<Record<Slot, PhotoSlot>>({
   second: { file: null, preview: '' },
 })
 const photoSlots: { key: Slot; label: string }[] = [
-  { key: 'first', label: 'First one' },
-  { key: 'second', label: 'Second one' },
+  { key: 'first', label: 'Front Side' },
+  { key: 'second', label: 'Back Side' },
 ]
 
 const consent = ref(false)
@@ -203,9 +203,9 @@ onBeforeUnmount(() => {
         <!-- Photo uploads -->
         <div class="space-y-3">
           <div>
-            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Please upload your photos</p>
+            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Please upload photo of ID card</p>
             <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-              Both images need to be captured from different environments. JPEG, PNG or WebP, up to {{ MAX_PHOTO_MB }} MB each.
+              Both the front and back photos must be clear; please ensure that no part of the photos is obscured by your fingers. JPEG, PNG or WebP, up to {{ MAX_PHOTO_MB }} MB each.
             </p>
           </div>
 

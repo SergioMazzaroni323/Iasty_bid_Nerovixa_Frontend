@@ -36,14 +36,14 @@ function startOnboarding(invite: Invitation) {
 }
 
 async function cancelInvite(invite: Invitation) {
-  if (!window.confirm(`Cancel the invitation from ${invite.job.company_name}?`)) return
+  if (!window.confirm(`Decline the invitation from ${invite.job.company_name}?`)) return
   cancellingId.value = invite.id
   inviteError.value = ''
   try {
     await invitationsApi.cancel(invite.id)
     invitations.value = invitations.value.filter((item) => item.id !== invite.id)
   } catch (e: unknown) {
-    inviteError.value = apiErrorMessage(e, 'Failed to cancel the invitation.')
+    inviteError.value = apiErrorMessage(e, 'Failed to Decline the invitation.')
   } finally {
     cancellingId.value = null
   }
@@ -308,7 +308,7 @@ onUnmounted(() => {
               :disabled="cancellingId === invite.id"
               @click="cancelInvite(invite)"
             >
-              {{ cancellingId === invite.id ? 'Cancelling…' : 'Cancel invite' }}
+              {{ cancellingId === invite.id ? 'Declineing…' : 'Decline invite' }}
             </button>
             <button type="button" class="app-btn-primary flex-1" @click="startOnboarding(invite)">Onboarding</button>
           </template>
