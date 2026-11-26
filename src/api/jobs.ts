@@ -52,6 +52,11 @@ export interface ScrapeStatus {
   available_templates: number
 }
 
+export interface JobStats {
+  total_jobs: number
+  work_modes: { work_mode: WorkMode; count: number }[]
+}
+
 export interface ScrapeStopResponse {
   is_active: boolean
   real_jobs: Job[]
@@ -85,6 +90,8 @@ export const jobsApi = {
     }),
 
   filterOptions: () => api.get<JobFilterOptions>('/jobs/filter-options'),
+
+  stats: () => api.get<JobStats>('/jobs/stats'),
 
   scrapeStart: () => api.post<ScrapeStatus>('/jobs/scrape/start'),
 

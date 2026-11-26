@@ -23,9 +23,11 @@ async function onSubmit() {
     await router.push({ name: 'home' })
   } catch (e: unknown) {
     const err = e as { response?: { status?: number; data?: { detail?: string } } }
+    const detail = err.response?.data?.detail
     if (err.response?.status === 403) {
-      showUnverified.value = true
-      error.value = err.response?.data?.detail ?? 'Email not verified.'
+      // 403 also covers pending-approval and deactivated accounts; only offer a resend when unverified
+      showUnverified.value = typeof detail === 'string' && detail.startsWith('Email not verified')
+      error.value = detail ?? 'Sign-in is not allowed for this account.'
     } else {
       error.value = err.response?.data?.detail ?? 'Login failed. Please try again.'
     }

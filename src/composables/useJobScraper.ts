@@ -55,6 +55,20 @@ function scheduleScrapeNext() {
   }, randomScrapeDelay())
 }
 
+/** Stop polling and forget scrape state (used on logout so the next user starts clean). */
+export function resetJobScraper() {
+  if (scrapeTimer) {
+    clearTimeout(scrapeTimer)
+    scrapeTimer = null
+  }
+  scraping.value = false
+  scrapeMessage.value = ''
+  scrapeStatus.value = null
+  onJobAdded = null
+  onScrapeComplete = null
+  onScrapeError = null
+}
+
 export function useJobScraper() {
   function registerHandlers(handlers: {
     onJobAdded?: (job: Job) => void

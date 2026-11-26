@@ -13,6 +13,24 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+let unauthorizedHandler: (() => void) | null = null
+
+/** Called when an authenticated request gets 401 (expired/invalid token). */
+export function setUnauthorizedHandler(handler: () => void) {
+  unauthorizedHandler = handler
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const hadToken = Boolean(error?.config?.headers?.Authorization)
+    if (error?.response?.status === 401 && hadToken) {
+      unauthorizedHandler?.()
+    }
+    return Promise.reject(error)
+  },
+)
+
 export interface MessageResponse {
   message: string
 }

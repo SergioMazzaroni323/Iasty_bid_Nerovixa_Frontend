@@ -1,7 +1,6 @@
-import type { DashboardStats, DailyCount, WorkModeStat } from '../api/dashboard'
-import { jobsApi, type WorkMode } from '../api/jobs'
+import type { DashboardStats, DailyCount } from '../api/dashboard'
+import { jobsApi } from '../api/jobs'
 
-const WORK_MODES: WorkMode[] = ['remote', 'hybrid', 'on-site']
 export const DASHBOARD_DAYS = 7
 
 const APPLIED_MIN = 31
@@ -107,29 +106,17 @@ function generateDemoDailySeries(userSeed: number, days: number): { applications
   return { applications, resumes }
 }
 
-async function loadWorkModeStats(): Promise<WorkModeStat[]> {
-  const results = await Promise.all(
-    WORK_MODES.map(async (work_mode) => {
-      const { data } = await jobsApi.list({ work_mode, page: 1, page_size: 1 })
-      return { work_mode, count: data.total }
-    }),
-  )
-  return results
-}
-
 export async function buildDashboardStats(userSeed: number): Promise<DashboardStats> {
-  const [{ data: jobsData }, work_modes] = await Promise.all([
-    jobsApi.list({ page: 1, page_size: 1 }),
-    loadWorkModeStats(),
-  ])
+  // One request: total + per-work-mode counts (was 4 parallel list calls that raced on first load)
+  const { data: jobsData } = await jobsApi.stats()
 
   const { applications, resumes } = generateDemoDailySeries(userSeed, DASHBOARD_DAYS)
 
   return {
-    total_jobs: jobsData.total,
+    total_jobs: jobsData.total_jobs,
     total_applications: applications.reduce((sum, item) => sum + item.count, 0),
     total_resumes: resumes.reduce((sum, item) => sum + item.count, 0),
-    work_modes,
+    work_modes: jobsData.work_modes,
     applications_by_day: applications,
     resumes_by_day: resumes,
     days: DASHBOARD_DAYS,

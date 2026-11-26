@@ -1,4 +1,5 @@
 import { authApi, type UserResponse } from '../api/client'
+import { resetJobScraper } from '../composables/useJobScraper'
 
 let cachedUser: UserResponse | null = null
 let inflight: Promise<UserResponse> | null = null
@@ -32,4 +33,5 @@ export function clearSession() {
   cachedUser = null
   inflight = null
   localStorage.removeItem('access_token')
+  resetJobScraper()
 }

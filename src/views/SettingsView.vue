@@ -2,16 +2,13 @@
 import { computed, onMounted, ref } from 'vue'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import AdminUsersPanel from '../components/AdminUsersPanel.vue'
+import AdminInvitationsPanel from '../components/AdminInvitationsPanel.vue'
 import { fetchCurrentUser, getCachedUser } from '../auth/session'
 import type { UserResponse } from '../api/client'
 
 const user = ref<UserResponse | null>(getCachedUser())
 
-const isAdmin = computed(
-  () =>
-    user.value?.role === 'admin' ||
-    user.value?.email?.toLowerCase() === 'hoyosnohor@gmail.com',
-)
+const isAdmin = computed(() => user.value?.role === 'admin')
 
 const roleLabel = computed(() => (isAdmin.value ? 'Admin' : 'User'))
 
@@ -68,6 +65,10 @@ onMounted(async () => {
 
     <section v-if="isAdmin" class="app-card">
       <AdminUsersPanel />
+    </section>
+
+    <section v-if="isAdmin" class="app-card">
+      <AdminInvitationsPanel />
     </section>
 
     <section class="app-card">

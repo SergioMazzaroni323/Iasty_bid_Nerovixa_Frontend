@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { setUnauthorizedHandler } from '../api/client'
 import { clearSession, fetchCurrentUser } from '../auth/session'
 
 const router = createRouter({
@@ -64,6 +65,12 @@ const router = createRouter({
           component: () => import('../views/SettingsView.vue'),
           meta: { requiresAuth: true },
         },
+        {
+          path: 'onboarding/:id',
+          name: 'onboarding',
+          component: () => import('../views/OnboardingView.vue'),
+          meta: { requiresAuth: true },
+        },
       ],
     },
   ],
@@ -87,6 +94,13 @@ router.beforeEach(async (to) => {
       clearSession()
       return { name: 'login' }
     }
+  }
+})
+
+setUnauthorizedHandler(() => {
+  clearSession()
+  if (!router.currentRoute.value.meta.guest) {
+    router.push({ name: 'login' })
   }
 })
 

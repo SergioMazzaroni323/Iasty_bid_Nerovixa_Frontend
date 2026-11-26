@@ -110,7 +110,8 @@ function statusClass(status: UserStatus) {
 }
 
 function isPrimaryAdmin(user: AdminUser) {
-  return user.role === 'admin' || user.email.toLowerCase() === 'hoyosnohor@gmail.com'
+  // Only the configured primary admin gets role=admin; the backend enforces the same rule
+  return user.role === 'admin'
 }
 
 onMounted(loadUsers)

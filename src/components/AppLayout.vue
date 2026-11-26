@@ -37,7 +37,8 @@ const navItems = [
 
 const pageTitle = computed(() => {
   const item = navItems.find((entry) => entry.name === route.name)
-  return item?.label ?? 'Nerovixa'
+  if (item) return item.label
+  return route.name === 'onboarding' ? 'Onboarding' : 'Nerovixa'
 })
 
 onMounted(async () => {

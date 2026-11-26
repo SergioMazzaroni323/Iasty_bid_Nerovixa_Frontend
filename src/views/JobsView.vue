@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   EMPLOYMENT_TYPES,
   jobsApi,
@@ -11,7 +12,42 @@ import {
   type SortOrder,
   type WorkMode,
 } from '../api/jobs'
+import { apiErrorMessage, formatLongDate, invitationsApi, type Invitation } from '../api/invitations'
 import { useJobScraper } from '../composables/useJobScraper'
+
+const router = useRouter()
+
+// Invited jobs (from the database) shown above the job listings
+const invitations = ref<Invitation[]>([])
+const inviteError = ref('')
+const cancellingId = ref<string | null>(null)
+
+async function loadInvitations() {
+  try {
+    const { data } = await invitationsApi.list()
+    invitations.value = data
+  } catch (e: unknown) {
+    inviteError.value = apiErrorMessage(e, 'Failed to load invitations.')
+  }
+}
+
+function startOnboarding(invite: Invitation) {
+  router.push({ name: 'onboarding', params: { id: invite.id } })
+}
+
+async function cancelInvite(invite: Invitation) {
+  if (!window.confirm(`Cancel the invitation from ${invite.job.company_name}?`)) return
+  cancellingId.value = invite.id
+  inviteError.value = ''
+  try {
+    await invitationsApi.cancel(invite.id)
+    invitations.value = invitations.value.filter((item) => item.id !== invite.id)
+  } catch (e: unknown) {
+    inviteError.value = apiErrorMessage(e, 'Failed to cancel the invitation.')
+  } finally {
+    cancellingId.value = null
+  }
+}
 
 const jobs = ref<Job[]>([])
 const total = ref(0)
@@ -34,6 +70,24 @@ const sortBy = ref<JobSortField>('created_at')
 const sortOrder = ref<SortOrder>('desc')
 const page = ref(1)
 const PAGE_SIZE = 20
+// Search is debounced into this ref; every other filter applies immediately
+const debouncedSearch = ref('')
+
+// One key for everything that affects the list, so each change triggers exactly one request
+const queryKey = computed(() =>
+  JSON.stringify([
+    debouncedSearch.value,
+    company.value,
+    industry.value,
+    workMode.value,
+    employmentType.value,
+    location.value,
+    sortBy.value,
+    sortOrder.value,
+    page.value,
+  ]),
+)
+let requestSeq = 0
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
 const activeFilterCount = computed(() => {
@@ -56,11 +110,12 @@ async function loadFilterOptions() {
 }
 
 async function loadJobs() {
+  const seq = ++requestSeq
   loading.value = true
   error.value = ''
   try {
     const { data } = await jobsApi.list({
-      search: search.value || undefined,
+      search: debouncedSearch.value || undefined,
       company: company.value || undefined,
       industry: industry.value || undefined,
       work_mode: workMode.value,
@@ -71,13 +126,21 @@ async function loadJobs() {
       page: page.value,
       page_size: PAGE_SIZE,
     })
+    if (seq !== requestSeq) return // a newer request superseded this one
     jobs.value = data.items.slice(0, PAGE_SIZE)
     total.value = data.total
   } catch {
-    error.value = 'Failed to load jobs. Please try again.'
+    if (seq === requestSeq) error.value = 'Failed to load jobs. Please try again.'
   } finally {
-    loading.value = false
+    if (seq === requestSeq) loading.value = false
   }
+}
+
+/** Apply state changes, then reload only if they didn't already trigger the queryKey watcher. */
+function applyAndReload(mutate: () => void) {
+  const before = queryKey.value
+  mutate()
+  if (queryKey.value === before) loadJobs()
 }
 
 function prependJob(job: Job) {
@@ -93,7 +156,9 @@ function prependJob(job: Job) {
 }
 
 function resetFilters() {
+  if (searchTimer) clearTimeout(searchTimer)
   search.value = ''
+  debouncedSearch.value = ''
   company.value = ''
   industry.value = ''
   workMode.value = ''
@@ -102,7 +167,6 @@ function resetFilters() {
   sortBy.value = 'created_at'
   sortOrder.value = 'desc'
   page.value = 1
-  loadJobs()
 }
 
 function toggleSort(column: JobSortField) {
@@ -112,8 +176,6 @@ function toggleSort(column: JobSortField) {
     sortBy.value = column
     sortOrder.value = 'asc'
   }
-  page.value = 1
-  loadJobs()
 }
 
 function sortIcon(column: JobSortField) {
@@ -130,12 +192,12 @@ function formatLabel(value: string) {
     .join('-')
 }
 
-watch([company, industry, workMode, employmentType, location, sortBy, sortOrder], () => {
+// Any filter/sort change goes back to page 1 (runs before the queryKey watcher, same flush)
+watch([debouncedSearch, company, industry, workMode, employmentType, location, sortBy, sortOrder], () => {
   page.value = 1
-  loadJobs()
 })
 
-watch(page, () => {
+watch(queryKey, () => {
   loadJobs()
 })
 
@@ -144,8 +206,7 @@ watch(search, () => {
     clearTimeout(searchTimer)
   }
   searchTimer = setTimeout(() => {
-    page.value = 1
-    loadJobs()
+    debouncedSearch.value = search.value
   }, 300)
 })
 
@@ -153,19 +214,20 @@ onMounted(async () => {
   registerHandlers({
     onJobAdded: (job) => {
       prependJob(job)
-      loadFilterOptions()
     },
     onScrapeComplete: async () => {
-      page.value = 1
-      sortBy.value = 'created_at'
-      sortOrder.value = 'desc'
-      await loadJobs()
+      applyAndReload(() => {
+        page.value = 1
+        sortBy.value = 'created_at'
+        sortOrder.value = 'desc'
+      })
       await loadFilterOptions()
     },
     onScrapeError: (message) => {
       error.value = message
     },
   })
+  loadInvitations()
   await loadFilterOptions()
   await loadJobs()
 })
@@ -179,7 +241,78 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="space-y-5">
+    <!-- Invited jobs -->
+    <p v-if="inviteError" class="auth-error">{{ inviteError }}</p>
+
+    <section v-if="invitations.length" class="space-y-3">
+      <div>
+        <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100 sm:text-lg">Invited jobs</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+          {{ invitations.length }} invitation{{ invitations.length === 1 ? '' : 's' }} for you
+        </p>
+      </div>
+
+      <article
+        v-for="invite in invitations"
+        :key="invite.id"
+        class="app-card overflow-hidden border-emerald-200/70 !p-0 dark:border-emerald-900/50"
+      >
+        <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-emerald-50/60 px-4 py-3 dark:border-slate-800 dark:bg-emerald-950/20 sm:px-6">
+          <span class="app-badge app-badge-real">Invited</span>
+          <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ invite.job.company_name }}</span>
+        </div>
+
+        <dl class="grid grid-cols-1 gap-x-6 gap-y-3 px-4 py-4 text-sm sm:grid-cols-2 sm:px-6 lg:grid-cols-3">
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Company name</dt>
+            <dd class="mt-0.5 font-medium text-slate-800 dark:text-slate-200">{{ invite.job.company_name }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Required role</dt>
+            <dd class="mt-0.5 font-medium text-slate-800 dark:text-slate-200">{{ invite.job.required_role }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Pay rate</dt>
+            <dd class="mt-0.5 font-medium text-slate-800 dark:text-slate-200">{{ invite.job.pay_rate }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Manager</dt>
+            <dd class="mt-0.5 font-medium text-slate-800 dark:text-slate-200">{{ invite.job.manager }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Type</dt>
+            <dd class="mt-0.5 font-medium text-slate-800 dark:text-slate-200">{{ invite.job.employment_type }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Start date</dt>
+            <dd class="mt-0.5 font-medium text-slate-800 dark:text-slate-200">{{ formatLongDate(invite.job.start_date) }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">End date</dt>
+            <dd class="mt-0.5 font-medium text-slate-800 dark:text-slate-200">{{ formatLongDate(invite.job.end_date) }}</dd>
+          </div>
+        </dl>
+
+        <div class="flex flex-col-reverse gap-2 border-t border-slate-200 px-4 py-3 dark:border-slate-800 sm:flex-row sm:justify-end sm:px-6">
+          <template v-if="invite.status === 'submitted'">
+            <span class="app-badge app-badge-real self-center">Onboarding submitted</span>
+          </template>
+          <template v-else>
+            <button
+              type="button"
+              class="app-btn-stop justify-center"
+              :disabled="cancellingId === invite.id"
+              @click="cancelInvite(invite)"
+            >
+              {{ cancellingId === invite.id ? 'Cancelling…' : 'Cancel invite' }}
+            </button>
+            <button type="button" class="app-btn-primary" @click="startOnboarding(invite)">Onboarding</button>
+          </template>
+        </div>
+      </article>
+    </section>
+
     <section class="app-card overflow-hidden !p-0">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-6 sm:py-4">
           <div>
