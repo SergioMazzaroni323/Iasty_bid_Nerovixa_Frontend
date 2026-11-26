@@ -253,17 +253,19 @@ onUnmounted(() => {
         </p>
       </div>
 
+      <!-- ~30% width each on wide screens (3 per row), 2 per row on tablets, full width on phones -->
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       <article
         v-for="invite in invitations"
         :key="invite.id"
-        class="app-card overflow-hidden border-emerald-200/70 !p-0 dark:border-emerald-900/50"
+        class="app-card flex flex-col overflow-hidden border-emerald-200/70 !p-0 dark:border-emerald-900/50"
       >
-        <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-emerald-50/60 px-4 py-3 dark:border-slate-800 dark:bg-emerald-950/20 sm:px-6">
+        <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-emerald-50/60 px-4 py-3 dark:border-slate-800 dark:bg-emerald-950/20 sm:px-5">
           <span class="app-badge app-badge-real">Invited</span>
           <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ invite.job.company_name }}</span>
         </div>
 
-        <dl class="grid grid-cols-1 gap-x-6 gap-y-3 px-4 py-4 text-sm sm:grid-cols-2 sm:px-6 lg:grid-cols-3">
+        <dl class="grid flex-1 grid-cols-2 gap-x-4 gap-y-3 px-4 py-4 text-sm sm:px-5">
           <div>
             <dt class="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Company name</dt>
             <dd class="mt-0.5 font-medium text-slate-800 dark:text-slate-200">{{ invite.job.company_name }}</dd>
@@ -294,23 +296,25 @@ onUnmounted(() => {
           </div>
         </dl>
 
-        <div class="flex flex-col-reverse gap-2 border-t border-slate-200 px-4 py-3 dark:border-slate-800 sm:flex-row sm:justify-end sm:px-6">
+        <div class="flex gap-2 border-t border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-5">
+          <!-- buttons share the row equally so they fit the narrower card -->
           <template v-if="invite.status === 'submitted'">
-            <span class="app-badge app-badge-real self-center">Onboarding submitted</span>
+            <span class="app-badge app-badge-real ml-auto self-center">Onboarding submitted</span>
           </template>
           <template v-else>
             <button
               type="button"
-              class="app-btn-stop justify-center"
+              class="app-btn-stop flex-1 justify-center"
               :disabled="cancellingId === invite.id"
               @click="cancelInvite(invite)"
             >
               {{ cancellingId === invite.id ? 'Cancelling…' : 'Cancel invite' }}
             </button>
-            <button type="button" class="app-btn-primary" @click="startOnboarding(invite)">Onboarding</button>
+            <button type="button" class="app-btn-primary flex-1" @click="startOnboarding(invite)">Onboarding</button>
           </template>
         </div>
       </article>
+      </div>
     </section>
 
     <section class="app-card overflow-hidden !p-0">
